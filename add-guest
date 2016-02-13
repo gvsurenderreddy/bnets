@@ -1,0 +1,18 @@
+#!/bin/bash
+#usage:add-guest {GUEST IP} {Alloc. BW for new guest}  {GUEST ID}
+if [ $# -ne 3 ]
+	then
+		echo "Invalid number of args"
+		exit 0
+fi
+
+MAX_BW=10
+GUEST_IP=$1
+GUEST_BW=$2
+NEW_GUEST_ID=$3 #there must be a flow ID variable for us to keep track of
+
+tc class add dev ifb0 parent 1:20 classid 1:${NEW_GUEST_ID} htb rate ${GUEST_BW}Mbit ceil ${MAX_BW}Mbit
+tc qdisc add dev ifb0 parent 1:${NEW_GUEST_ID} handle ${NEW_GUEST_ID}: sfq perturb 10
+
+tc filter add dev ifb0 protocol ip parent 1: handle ::${NEW_GUEST_ID} prio 1 u32 match ip src ${GUEST_IP}/32 flowid 1:${NEW_GUEST_ID}
+tc filter add dev ifb0 protocol ip parent 1: handle ::${NEW_GUEST_ID} prio 1 u32 match ip dst ${GUEST_IP}/32 flowid 1:${NEW_GUEST_ID}

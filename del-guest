@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+	then
+		echo "Invalid number of args"
+		exit 0
+fi
+
+GUEST_ID=$1
+
+tc filter del dev ifb0 protocol ip parent 1: handle 801::${GUEST_ID} prio 1 u32
+tc filter del dev ifb0 protocol ip parent 1: handle 801::${GUEST_ID} prio 1 u32
+tc class del dev ifb0 classid 1:${GUEST_ID}
