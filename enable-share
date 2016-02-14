@@ -1,0 +1,7 @@
+#!/bin/bash
+MAX_BW=10
+if [ -f ./friendlist ]; then
+	while IFS=" " read id addr bw; do
+		tc class change dev ifb0 parent 1:1 classid 1:${id} htb prio 1 rate ${bw}Mbit ceil 10Mbit
+	done<friendlist
+fi

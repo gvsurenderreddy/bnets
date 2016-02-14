@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ -f ./friendlist ]; then
+	while IFS=" " read id bw; do
+		tc class change dev ifb0 parent 1:1 classid 1:${id} htb prio 1 rate 0kbit ceil 0kbit
+	done<friendlist
+fi

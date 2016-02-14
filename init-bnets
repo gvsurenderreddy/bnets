@@ -1,0 +1,48 @@
+#!/bin/bash
+#Prioritize owners' traffic over guests
+IF_OWNER=wlan0 #input interface where owners connect to
+IF_GUEST=wlan1 #input interface where guests connect to
+MAX_BW=10 #Mbit
+BW_OWNER=${MAX_BW} #by default, owner would try to fully utilize his/her link.
+BW_GUEST=0.1 #minimum bw in Mbit for new guests
+NET_OWNER=192.168.12.0
+NET_GUEST=192.168.13.0
+
+tc qdisc del dev ifb0 root
+tc qdisc add dev ifb0 root handle 1: htb
+tc class add dev ifb0 parent 1: classid 1:1 htb rate ${MAX_BW}Mbit burst 15k
+
+#Guests will use up all of the link if owner is not around
+#Class id for unclassified guests/strangers is 20
+tc class add dev ifb0 parent 1:1 classid 1:10 htb prio 0 rate ${BW_OWNER}Mbit ceil ${MAX_BW}Mbit
+tc class add dev ifb0 parent 1:1 classid 1:20 htb prio 2 rate ${BW_GUEST}Mbit ceil ${MAX_BW}Mbit 
+
+tc qdisc add dev ifb0 parent 1:10 handle 10: sfq perturb 10
+tc qdisc add dev ifb0 parent 1:20 handle 20: sfq perturb 10
+
+echo 20 $BW_GUEST >> friendlist
+
+tc filter add dev ifb0 protocol ip parent 1: prio 5 u32 match ip src ${NET_OWNER}/24 flowid 1:10
+tc filter add dev ifb0 protocol ip parent 1: prio 5 u32 match ip dst ${NET_OWNER}/24 flowid 1:10
+tc filter add dev ifb0 protocol ip parent 1: prio 5 u32 match ip src ${NET_GUEST}/24 flowid 1:20
+tc filter add dev ifb0 protocol ip parent 1: prio 5 u32 match ip dst ${NET_GUEST}/24 flowid 1:20
+
+tc qdisc del root dev $IF_OWNER
+tc qdisc add dev $IF_OWNER root handle 1: htb
+
+tc class add dev $IF_OWNER parent 1: classid 1:1 htb rate ${MAX_BW}Mbit burst 15k
+
+tc filter add dev $IF_OWNER protocol ip parent 1: prio 1 u32 match ip src ${NET_OWNER}/24 flowid 1:1 \
+action mirred egress redirect dev ifb0
+tc filter add dev $IF_OWNER protocol ip parent 1: prio 1 u32 match ip dst ${NET_OWNER}/24 flowid 1:1 \
+action mirred egress redirect dev ifb0
+
+tc qdisc del root dev $IF_GUEST 
+tc qdisc add dev $IF_GUEST root handle 1: htb
+
+tc class add dev $IF_GUEST parent 1: classid 1:1 htb rate ${MAX_BW}Mbit burst 15k
+
+tc filter add dev $IF_GUEST protocol ip parent 1: prio 1 u32 match ip src ${NET_GUEST}/24 flowid 1:1 \
+action mirred egress redirect dev ifb0
+tc filter add dev $IF_GUEST protocol ip parent 1: prio 1 u32 match ip dst ${NET_GUEST}/24 flowid 1:1 \
+action mirred egress redirect dev ifb0

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+	then
+		echo "Invalid number of args"
+		exit 0
+fi
+
+if [[ $1 -eq 20 ]]
+	then
+		echo "Invalid ID, 20 is designated for strangers"
+		exit 0
+fi
+
+GUEST_ID=$1
+
+tc filter del dev ifb0 protocol ip parent 1: handle 800::${GUEST_ID} prio 1 u32
+tc filter del dev ifb0 protocol ip parent 1: handle 800::${GUEST_ID} prio 1 u32
+tc class del dev ifb0 classid 1:${GUEST_ID}
+
+awk '$1!=${GUEST_ID}' file.txt > file.txt

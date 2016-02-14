@@ -1,0 +1,15 @@
+#!/bin/bash
+#CHANGE FRIEND BW
+if [ $# -ne 2  ]
+	then
+		echo "ERROR: Invalid number of args."
+		exit 0
+fi 
+
+FRIEND_ID=$1 #20 is for strangers
+FRIEND_BW=$2
+MAX_BW=10
+
+awk '$1!=${FRIEND_ID}' file.txt > file.txt
+tc class change dev ifb0 parent 1:1 classid 1:${FRIEND_ID} htb prio 1 rate ${FRIEND_BW}Mbit ceil ${MAX_BW}Mbit
+echo $FRIEND_ID $FRIEND_BW >> friendlist
